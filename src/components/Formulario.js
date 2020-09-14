@@ -1,5 +1,7 @@
 import React, {useState} from 'react'
 import styled from '@emotion/styled'
+import PropTypes from 'prop-types'
+import { obtenerDiferencia, calcularMarca, obtenerPlan } from '../helper'
 
 const Campo = styled.div`
     display: flex;
@@ -41,13 +43,24 @@ const Button = styled.button`
     }
 `
 
-const Formulario = () => {
+const Error = styled.div`
+    background-color: red;
+    color: white;
+    padding: 1rem;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 2rem;
+`
+
+const Formulario = ({guardarResumen, guardarCargando}) => {
 
     const [datos, guardarDatos] = useState({
         marca: '',
         año: '',
         plan: ''
     })
+
+    const [error, guardarError] = useState(false)
 
     //Object destructuring de datos
     const {marca, año, plan} = datos
@@ -57,8 +70,50 @@ const Formulario = () => {
         guardarDatos({...datos, [e.target.name]: e.target.value})
     }
 
+    const cotizarSeguro = e => {
+        e.preventDefault()
+
+        if(marca.trim() === '' || año.trim() === '' || plan.trim() === true) {
+            guardarError(true)
+            return
+        }
+
+        guardarError(false)
+        
+        //valor base
+        let resultado = 2000
+        
+        //obtener diferencia de años con un helper importado
+        const diferencia = obtenerDiferencia(año)
+
+        //cada año se le resta el 3%
+        resultado -= ((diferencia * 3) * resultado) / 100
+
+        //cáclulo según la marca
+        resultado = calcularMarca(marca) * resultado
+
+        //incremento según el plan
+        const incrementoPlan = obtenerPlan(plan)
+
+        resultado = parseFloat(incrementoPlan * resultado).toFixed(2)
+
+        guardarCargando(true)
+
+        setTimeout(() => {
+            guardarResumen({
+                cotizacion: Number(resultado),
+                datos
+            })
+
+            guardarCargando(false)
+        }, 3000)
+    }
+
     return (
-        <form>
+        <form onSubmit={cotizarSeguro}>
+ 
+            { error ? <Error>Todos los campos son obligatorios</Error> : null }
+
             <Campo>
                 <Label>Marca</Label>
                 <Select name='marca' value={marca} onChange={obtenerInformacion}>
@@ -92,9 +147,14 @@ const Formulario = () => {
                 <InputRadio type='radio' name='plan' value='completo' onChange={obtenerInformacion} checked={plan === 'completo'} /> Completo
             </Campo>
 
-            <Button type='button'>Cotizar</Button>
+            <Button type='submit'>Cotizar</Button>
         </form>
     )
+}
+
+Formulario.propTypes = {
+    guardarResumen: PropTypes.func.isRequired,
+    guardarCargando: PropTypes.func.isRequired
 }
  
 export default Formulario
